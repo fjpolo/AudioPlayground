@@ -11,8 +11,10 @@ import pyaudio
 from scipy.io import wavfile
 import sounddevice as sd
 import pickle
-import Echo as echo
 import Plugin as plugin
+import Fade as fade
+
+
 
 #
 # Constants
@@ -99,84 +101,84 @@ if __name__ == "__main__":
     SaxSignalNormStereo = np.array([SaxSignalNorm, SaxSignalNorm])
     SaxSignalNormStereo = np.transpose(SaxSignalNormStereo)
 
-    # Impulse
-    x = np.zeros(2 * fs_Sax)
-    x[0] = 1
+    #
+    # Linear fade
+    #
 
-    # FeedForwardEcho
-    x_IR = echo.FeedForwardEcho(x, 300, fs_Sax, 0.6)
-    SavePath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print("Saving FeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
+    # Fade In
+    SaxSignalNormFadedIn = fade.LinearFadeIn(SaxSignalNorm, 2000, fs_Sax)
 
-    # TempoSyncFeedForwardEcho
-    x_IR = echo.TempoSyncFeedForwardEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedForwardEcho_IR.wav"
-    print("Saving TempoSyncFeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
+    # Fade Out
+    SaxSignalNormFadedOut = fade.LinearFadeOut(SaxSignalNorm, 2000, fs_Sax)
 
-    # TempoSyncFeedbackEcho
-    x_IR = echo.TempoSyncFeedbackEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedbackEcho_IR.wav"
-    print("Saving TempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # MultitapTempoSyncFeedbackEcho
-    x_IR = echo.MultitapTempoSyncFeedbackEcho(
-        Input=x, 
-        bpm=60,
-        noteDurations=[1, 0.5],
-        SampleRate=fs_Sax,
-        delayGains=[1, 0.7, 0.5],
-        taps=2
-        )    
-    SavePath = "Effects\Plugins\MultitapTempoSyncFeedbackEcho_IR.wav"
-    print("Saving MultitapTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # StereoTempoSyncFeedbackEcho
-    x_IR = echo.StereoTempoSyncFeedbackEcho(
-        Input=x,
-        bpm=60,
-        SampleRate=fs_Sax,
-        delayGains = [0.7, 0.5]
-    )
-    SavePath = "Effects\Plugins\StereoTempoSyncFeedbackEcho_IR.wav"
-    print("Saving StereoTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-
-
-
-    # Load plugin
-    LoadPath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print()
-    print("Loading FeedForwardEcho_IR.wav...")
-    x_ir = plugin.LoadPluginFromWav(LoadPath)
+    # Fade InOut
+    SaxSignalNormFadedInOut_aux = fade.LinearFadeIn(SaxSignalNorm, 2000, fs_Sax)
+    SaxSignalNormFadedInOut = fade.LinearFadeOut(SaxSignalNormFadedInOut_aux, 2000, fs_Sax)
     
-    # Convolve
-    print()
-    print("Convolving input and TempoSyncFeedbackEcho_IR...")
-    SaxSignalEcho = np.convolve(SaxSignalNorm, x_ir)
-    # plt.figure()
-    # plt.plot(x_ir)
+    #
+    # Quadratic fade
+    #
+
+    # Fade In
+    SaxSignalNormFadedIn_quad = fade.QuadraticFadeIn(SaxSignalNorm, 2000, fs_Sax)
+
+    # Fade Out
+    SaxSignalNormFadedOut_quad = fade.QuadraticFadeOut(SaxSignalNorm, 2000, fs_Sax)
+
+    # Fade InOut
+    SaxSignalNormFadedInOut_quad_aux = fade.QuadraticFadeIn(SaxSignalNorm, 2000, fs_Sax)
+    SaxSignalNormFadedInOut_quad = fade.QuadraticFadeOut(SaxSignalNormFadedInOut_quad_aux, 2000, fs_Sax)
     
-    # # Play
+
+    #
+    # Concave fade
+    #
+
+    # Fade In
+    SaxSignalNormFadedIn_conc = fade.ConcaveFadeIn(SaxSignalNorm, 2000, fs_Sax)
+
+    # Fade Out
+    SaxSignalNormFadedOut_conc = fade.LinearFadeOut(SaxSignalNorm, 2000, fs_Sax)
+
+    # Fade InOut
+    SaxSignalNormFadedInOut_conc_aux = fade.LinearFadeIn(SaxSignalNorm, 2000, fs_Sax)
+    SaxSignalNormFadedInOut_conc = fade.LinearFadeOut(SaxSignalNormFadedInOut_conc_aux, 2000, fs_Sax)
+    
+    #
+    # Play
+    #
     print()
     print("Playing...")
-    sd.play(SaxSignalEcho, fs_Sax)
+    sd.play(SaxSignalNormFadedInOut_conc, fs_Sax)
     sd.wait()
 
     # Plot
-    fig, pltArr = plt.subplots(3, sharex=True) 
+    fig, pltArr = plt.subplots(5, sharex=True) 
+    fig.suptitle("Linear Fade")
     pltArr[0].plot(SaxSignalFullRange)
     pltArr[1].plot(SaxSignalNorm)
-    pltArr[2].plot(SaxSignalEcho)
+    pltArr[2].plot(SaxSignalNormFadedIn)
+    pltArr[3].plot(SaxSignalNormFadedOut)
+    pltArr[4].plot(SaxSignalNormFadedInOut)
+
+    # Plot
+    fig, pltArr = plt.subplots(5, sharex=True) 
+    fig.suptitle("Quadratic Fade")
+    pltArr[0].plot(SaxSignalFullRange)
+    pltArr[1].plot(SaxSignalNorm)
+    pltArr[2].plot(SaxSignalNormFadedIn_quad)
+    pltArr[3].plot(SaxSignalNormFadedOut_quad)
+    pltArr[4].plot(SaxSignalNormFadedInOut_quad)
+
+    # Plot
+    fig, pltArr = plt.subplots(5, sharex=True) 
+    fig.suptitle("Concave Fade")
+    pltArr[0].plot(SaxSignalFullRange)
+    pltArr[1].plot(SaxSignalNorm)
+    pltArr[2].plot(SaxSignalNormFadedIn_conc)
+    pltArr[3].plot(SaxSignalNormFadedOut_conc)
+    pltArr[4].plot(SaxSignalNormFadedInOut_conc)
+    
 
 
     #

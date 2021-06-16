@@ -11,8 +11,10 @@ import pyaudio
 from scipy.io import wavfile
 import sounddevice as sd
 import pickle
-import Echo as echo
 import Plugin as plugin
+import Modulation as mod
+
+
 
 #
 # Constants
@@ -99,84 +101,34 @@ if __name__ == "__main__":
     SaxSignalNormStereo = np.array([SaxSignalNorm, SaxSignalNorm])
     SaxSignalNormStereo = np.transpose(SaxSignalNormStereo)
 
-    # Impulse
-    x = np.zeros(2 * fs_Sax)
-    x[0] = 1
+    #
+    # Amplitude Modulation
+    #
+    SaxSignalNormMdulated_AM = mod.AM(SaxSignalNorm, 5, fs_Sax)
+    # Tremolo
+    SaxSignalNormMdulatedTremolo = mod.Tremolo(
+        Input=SaxSignalNorm, 
+        rate=10, depth=2, 
+        sampleRate=fs_Sax, 
+        lfo='Sine'
+        )
 
-    # FeedForwardEcho
-    x_IR = echo.FeedForwardEcho(x, 300, fs_Sax, 0.6)
-    SavePath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print("Saving FeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # TempoSyncFeedForwardEcho
-    x_IR = echo.TempoSyncFeedForwardEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedForwardEcho_IR.wav"
-    print("Saving TempoSyncFeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # TempoSyncFeedbackEcho
-    x_IR = echo.TempoSyncFeedbackEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedbackEcho_IR.wav"
-    print("Saving TempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # MultitapTempoSyncFeedbackEcho
-    x_IR = echo.MultitapTempoSyncFeedbackEcho(
-        Input=x, 
-        bpm=60,
-        noteDurations=[1, 0.5],
-        SampleRate=fs_Sax,
-        delayGains=[1, 0.7, 0.5],
-        taps=2
-        )    
-    SavePath = "Effects\Plugins\MultitapTempoSyncFeedbackEcho_IR.wav"
-    print("Saving MultitapTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # StereoTempoSyncFeedbackEcho
-    x_IR = echo.StereoTempoSyncFeedbackEcho(
-        Input=x,
-        bpm=60,
-        SampleRate=fs_Sax,
-        delayGains = [0.7, 0.5]
-    )
-    SavePath = "Effects\Plugins\StereoTempoSyncFeedbackEcho_IR.wav"
-    print("Saving StereoTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-
-
-
-    # Load plugin
-    LoadPath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print()
-    print("Loading FeedForwardEcho_IR.wav...")
-    x_ir = plugin.LoadPluginFromWav(LoadPath)
-    
-    # Convolve
-    print()
-    print("Convolving input and TempoSyncFeedbackEcho_IR...")
-    SaxSignalEcho = np.convolve(SaxSignalNorm, x_ir)
-    # plt.figure()
-    # plt.plot(x_ir)
-    
-    # # Play
+    #
+    # Play
+    #
     print()
     print("Playing...")
-    sd.play(SaxSignalEcho, fs_Sax)
+    sd.play(SaxSignalNormMdulatedTremolo, fs_Sax)
     sd.wait()
 
     # Plot
-    fig, pltArr = plt.subplots(3, sharex=True) 
+    fig, pltArr = plt.subplots(4, sharex=True) 
+    fig.suptitle("Linear Fade")
     pltArr[0].plot(SaxSignalFullRange)
     pltArr[1].plot(SaxSignalNorm)
-    pltArr[2].plot(SaxSignalEcho)
+    pltArr[2].plot(SaxSignalNormMdulated_AM)
+    pltArr[3].plot(SaxSignalNormMdulatedTremolo)
+
 
 
     #

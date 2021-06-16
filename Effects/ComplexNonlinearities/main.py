@@ -11,8 +11,10 @@ import pyaudio
 from scipy.io import wavfile
 import sounddevice as sd
 import pickle
-import Echo as echo
 import Plugin as plugin
+import Nonlinearities as nonlin
+
+
 
 #
 # Constants
@@ -99,84 +101,74 @@ if __name__ == "__main__":
     SaxSignalNormStereo = np.array([SaxSignalNorm, SaxSignalNorm])
     SaxSignalNormStereo = np.transpose(SaxSignalNormStereo)
 
+    #
+    # Softclipper
+    #
+    SaxSignalNorm_x2 = 5 * SaxSignalNorm
+    SaxSignalNormSoftClip = nonlin.SoftClipper(SaxSignalNorm)
     # Impulse
     x = np.zeros(2 * fs_Sax)
     x[0] = 1
-
-    # FeedForwardEcho
-    x_IR = echo.FeedForwardEcho(x, 300, fs_Sax, 0.6)
-    SavePath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print("Saving FeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # TempoSyncFeedForwardEcho
-    x_IR = echo.TempoSyncFeedForwardEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedForwardEcho_IR.wav"
-    print("Saving TempoSyncFeedForwardEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # TempoSyncFeedbackEcho
-    x_IR = echo.TempoSyncFeedbackEcho(x, bpm=60, SampleRate=fs_Sax, delayGain=0.2)
-    SavePath = "Effects\Plugins\TempoSyncFeedbackEcho_IR.wav"
-    print("Saving TempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # MultitapTempoSyncFeedbackEcho
-    x_IR = echo.MultitapTempoSyncFeedbackEcho(
-        Input=x, 
-        bpm=60,
-        noteDurations=[1, 0.5],
-        SampleRate=fs_Sax,
-        delayGains=[1, 0.7, 0.5],
-        taps=2
-        )    
-    SavePath = "Effects\Plugins\MultitapTempoSyncFeedbackEcho_IR.wav"
-    print("Saving MultitapTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-    # StereoTempoSyncFeedbackEcho
-    x_IR = echo.StereoTempoSyncFeedbackEcho(
-        Input=x,
-        bpm=60,
-        SampleRate=fs_Sax,
-        delayGains = [0.7, 0.5]
-    )
-    SavePath = "Effects\Plugins\StereoTempoSyncFeedbackEcho_IR.wav"
-    print("Saving StereoTempoSyncFeedbackEcho_IR.wav")
-    plugin.SavePluginAsWav(x_IR, SavePath)
-    print("Save successful!!")
-
-
-
-
-    # Load plugin
-    LoadPath = "Effects\Plugins\FeedForwardEcho_IR.wav"
-    print()
-    print("Loading FeedForwardEcho_IR.wav...")
-    x_ir = plugin.LoadPluginFromWav(LoadPath)
-    
-    # Convolve
-    print()
-    print("Convolving input and TempoSyncFeedbackEcho_IR...")
-    SaxSignalEcho = np.convolve(SaxSignalNorm, x_ir)
+    # Impulse Response Softclipper
+    # x_IR = nonlin.SoftClipper(x)
+    # SavePath = "Effects\Plugins\Softclipper_IR.wav"
+    # print("Saving Softclipper_IR.wav")
+    # plugin.SavePluginAsWav(x_IR, SavePath)
+    # print("Save successful!!")
     # plt.figure()
-    # plt.plot(x_ir)
-    
-    # # Play
+    # plt.plot(x_IR)
+    # PlotFreqResponse(x_IR, "Soft Clipper Softmax Frequency Response")
+    # Sine
+    t = np.linspace(0, (len(SaxSignalNorm)/fs_Sax), len(SaxSignalNorm))
+    x_sin = 5 * np.sin(2 * np.pi * 100 * t)
+    # THD@100Hz Softclipper
+    x_THD100Hz = nonlin.SoftClipper(x_sin)
+    # plt.figure()
+    # plt.plot(x_IR)
+    PlotFreqResponse(x_THD100Hz, "Soft Clipper Softmax THD@100Hz")
+
+
+    #
+    # DoubleSoftclipper
+    #
+    SaxSignalNormSoftClipDouble = nonlin.DoubleSoftClipper(SaxSignalNorm)
+    # Impulse
+    x = np.zeros(2 * fs_Sax)
+    x[0] = 1
+    # Impulse Response Softclipper
+    # x_IR = nonlin.DoubleSoftclipper(x)
+    # SavePath = "Effects\Plugins\DoubleSoftclipper_IR.wav"
+    # print("Saving DoubleSoftclipper.wav")
+    # plugin.SavePluginAsWav(x_IR, SavePath)
+    # print("Save successful!!")
+    # plt.figure()
+    # plt.plot(x_IR)
+    # PlotFreqResponse(x_IR, "Soft Clipper Softmax Frequency Response")
+    # Sine
+    t = np.linspace(0, (len(SaxSignalNorm)/fs_Sax), len(SaxSignalNorm))
+    x_sin = 5 * np.sin(2 * np.pi * 100 * t)
+    # THD@100Hz Softclipper
+    x_THD100Hz = nonlin.DoubleSoftClipper(x_sin)
+    # plt.figure()
+    # plt.plot(x_IR)
+    PlotFreqResponse(x_THD100Hz, "Double Soft Clipper Softmax THD@100Hz")
+
+    #
+    # Play
+    #
     print()
     print("Playing...")
-    sd.play(SaxSignalEcho, fs_Sax)
+    sd.play(SaxSignalNormSoftClipDouble, fs_Sax)
     sd.wait()
 
     # Plot
-    fig, pltArr = plt.subplots(3, sharex=True) 
+    fig, pltArr = plt.subplots(4, sharex=True) 
+    fig.suptitle("Linear Fade")
     pltArr[0].plot(SaxSignalFullRange)
     pltArr[1].plot(SaxSignalNorm)
-    pltArr[2].plot(SaxSignalEcho)
+    pltArr[2].plot(SaxSignalNormSoftClip)
+    pltArr[3].plot(SaxSignalNormSoftClipDouble)
+
 
 
     #
